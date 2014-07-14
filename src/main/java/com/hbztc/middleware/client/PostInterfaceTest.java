@@ -35,7 +35,7 @@ public class PostInterfaceTest extends TestCase {
 	protected void setUp() throws Exception {
 		super.setUp();
 		objPool.createPool();
-		PropertyConfigurator.configure(this.getClass().getResource(
+		PropertyConfigurator.configure(this.getClass().getClassLoader().getResource(
 				"log4j.properties"));
 	}
 
