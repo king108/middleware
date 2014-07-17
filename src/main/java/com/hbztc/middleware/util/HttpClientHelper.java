@@ -137,4 +137,18 @@ public class HttpClientHelper {
 		logger.info(mapper.toJson(resutlMap));
 		return resutlMap;
 	}
+	
+	public Map<String, Object> convertToJsonMap(String returnXml,
+			String retInfoPath, String resultPath, String resultPath2) {
+		Map<String, Object> resutlMap;
+		XMLUtil xmlUtil = new XMLUtil();
+		JsonMapper mapper = JsonMapper.nonDefaultMapper();
+		resutlMap = xmlUtil.parseXmlResult(returnXml, retInfoPath);
+		String returnCode = String.valueOf(resutlMap.get(CODE));
+		if (returnCode.equals(_200)) {
+			xmlUtil.parseXmlData(resutlMap, returnXml, resultPath, resultPath2);
+		}
+		logger.info(mapper.toJson(resutlMap));
+		return resutlMap;
+	}
 }

@@ -5,6 +5,8 @@ package com.hbztc.middleware.controller;
  * @date 2014-6-30
  */
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -16,55 +18,80 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.hbztc.middleware.client.CacheTool;
+import com.hbztc.middleware.util.HttpClientHelper;
+
 @Controller
 @RequestMapping("/privused")
-public class PrivusedController{
-	private static Logger logger = LoggerFactory
-			.getLogger(PrivusedController.class);
+public class PrivusedController extends AbstractController{
+	private static Logger logger = LoggerFactory.getLogger(PrivusedController.class);
 
 	@RequestMapping("qryPrivused")
 	@ResponseBody
-	public String qryprivused(HttpServletRequest request,
-			HttpServletResponse response) throws HttpException, IOException {
-		return 
-		"{\n" +
-		"    \"code\": \"200\",\n" + 
-		"    \"info\": \"success\",\n" + 
-		"    \"list\": [\n" + 
-		"        {\n" + 
-		"            \"Col1\": \"GPRSNOBUSY\",\n" + 
-		"            \"Col2\": \"G31202\",\n" + 
-		"            \"Col3\": \"10元闲时流量套餐\",\n" + 
-		"\t   \"Col4\": \"GPRS闲时流量\",\n" + 
-		"            \"Col5\": \"909\",\n" + 
-		"            \"Col6\": \"0\",\n" + 
-		"            \"Col7\": \"M\"\n" + 
-		"        },\n" + 
-		"        {\n" + 
-		"            \"Col1\": \"GPRSNOBUSY\",\n" + 
-		"            \"Col2\": \"G31321\",\n" + 
-		"            \"Col3\": \"免费30G省内4G流量充值包12个月\",\n" + 
-		"       \"Col4\": \"省内流量\",\n" + 
-		"            \"Col5\": \"30720\",\n" + 
-		"            \"Col6\": \"0\",\n" + 
-		"            \"Col7\": \"M\"\n" + 
-		"        }\n" + 
-		"    ]\n" + 
-		"}";
+	public Map<String, Object> qryprivused(HttpServletRequest request, HttpServletResponse response) throws HttpException, IOException {
+		Map<String,Object> resutlMap = null;
+		String reqXml = "";
+		String returnXml ="";
 		
-
+		String imei = request.getParameter("imei");
+		String moblie = request.getParameter("m");
+		String sid = request.getParameter("sid");
+		String billcycle = request.getParameter("billcycle");
+		String version = request.getParameter("version");
+		
+		logger.info("imei:" + imei);
+		logger.info("moblie:" + moblie);
+		logger.info("sid:" + sid);
+		logger.info("billcycle:" + billcycle);
+		logger.info("version:" + version);
+		
+		String memcachedSid = String.valueOf(CacheTool.getCache("sid"));
+		if (memcachedSid != null && memcachedSid.equals(sid)){
+			//未加密的电话号码请求
+			//reqXml = this.createReqXml(moblie, billcycle);
+			//加密的电话号码请求
+			reqXml = this.createReqXml(moblie, billcycle);
+			HttpClientHelper httpClientHelper = (HttpClientHelper)getObjPool().getObject();
+			returnXml = httpClientHelper.post(reqXml);
+			resutlMap = httpClientHelper.convertToJsonMap(returnXml, "/message/head/retinfo", "/message/Body/cli_mmobile_qry_privused/crset");
+			getObjPool().returnObject(httpClientHelper);
+		}else{
+			resutlMap = new HashMap<String, Object>();
+			resutlMap.put("code", 500);
+			resutlMap.put("info", "Processing the request failed");
+		}
+		return resutlMap;
 	}
 
-	public String createXml(String tel, String billcycle) {
-		String xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head><menuid></menuid><process_code>cli_mmobile_qry_privused</process_code><verify_code></verify_code><req_time>20131130111826</req_time><req_seq></req_seq><unicontact></unicontact><testflag></testflag><route><route_type>1</route_type><route_value>15002735378</route_value></route><channelinfo><operatorid></operatorid><channelid>bsacWap</channelid><unitid>bsacWap</unitid></channelinfo></head><Body><cli_mmobile_qry_privused>"
-				+ "<tagset><TELNUM>"+tel+"</TELNUM>"
-				+ "<BILLCYCLE>"+billcycle+"</BILLCYCLE><process_code>cli_mmobile_qry_privused</process_code></tagset></cli_mmobile_qry_privused></Body></message>";
-		return xml;
+	public String createReqXml(String tel, String billcycle) {
+		String reqXml = "<?xml version=\"1.0\" encoding=\"GBK\" ?>\n"
+				+ "<message>\n"
+				+ "<head version=\"1.0\"><menuid>#menuid#</menuid>\n"
+				+ "<process_code>cli_mmobile_qry_privused</process_code>\n"
+				+ "<verify_code>#verify_code#</verify_code>\n"
+				+ "<req_time>20140618091132</req_time><req_seq>#req_seq#</req_seq>\n"
+				+ "<unicontact>#unicontact#</unicontact>\n"
+				+ "<testflag>#testflag#</testflag>\n"
+				+ "<route><route_type>1</route_type>\n"
+				+ "<route_value>" + tel + "</route_value></route>\n"
+				+ "<channelinfo><operatorid>#operatorid#</operatorid>\n"
+				+ "<channelid>#channelid#</channelid>\n"
+				+ "<unitid>#unitid#</unitid></channelinfo>\n" + "</head>\n"
+				+ "<Body>\n" + "<cli_mmobile_qry_privused><tagset>\n"
+				+ "<TELNUM>" + tel + "</TELNUM>\n"
+				+ "<BILLCYCLE>" + billcycle + "</BILLCYCLE>\n"
+				+ "<process_code>cli_mmobile_qry_privused</process_code>\n"
+				+ "</tagset></cli_mmobile_qry_privused>\n" + "</Body>\n"
+				+ "</message>";
+		return reqXml;
 	}
 
 	public String getDemoXml() {
+		return null;
+	}
 
-		String demoXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head version=\"1.0\"><menuid/><process_code>cli_mmobile_qry_privused</process_code><verify_code/><resp_time>20140604111602</resp_time><sequence><req_seq/><operation_seq/></sequence><retinfo><rettype>0</rettype><retcode>0</retcode><retmsg><![CDATA[Processing the request succeeded!]]></retmsg></retinfo></head><Body><cli_mmobile_qry_privused><tagset><errno>0</errno></tagset><crset><usedetail><Col1>VOICE</Col1><Col2>B221547</Col2><Col3>LTE语音168元套餐</Col3><Col4>国内语音主叫</Col4><Col5>1000</Col5><Col6>259</Col6><Col7>分钟</Col7></usedetail><usedetail><Col1>EDUWLAN</Col1><Col2>EduWlan20</Col2><Col3>高校WLAN20元包</Col3><Col4>校园WLAN赠送时长</Col4><Col5>6000</Col5><Col6>3487</Col6><Col7>分钟</Col7></usedetail></crset></cli_mmobile_qry_privused></Body></message>";
-		return demoXml;
+	@Override
+	public String createReqXml() {
+		return null;
 	}
 }

@@ -5,6 +5,8 @@ package com.hbztc.middleware.controller;
  * @date 2014-6-30
  */
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -16,38 +18,86 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.hbztc.middleware.client.CacheTool;
+import com.hbztc.middleware.util.HttpClientHelper;
+
 @Controller
 @RequestMapping("/customerInfo")
-public class CustomerInfoController{
-	private static Logger logger = LoggerFactory
-			.getLogger(CustomerInfoController.class);
+public class CustomerInfoController extends AbstractController{
+	private static Logger logger = LoggerFactory.getLogger(CustomerInfoController.class);
 
 	@RequestMapping("qryCustomerInfo")
 	@ResponseBody
-	public String qryuserinfo(HttpServletRequest request,
-			HttpServletResponse response) throws HttpException, IOException {
-		return 
-		"{\n" +
-		"    \"code\": \"200\",\n" + 
-		"    \"info\": \"success\",\n" + 
-		"    \"SUBNAME\": \"2705228256636\",\n" + 
-		"    \"REGION\": \"270\",\n" + 
-		"    \"REGIONNAME\": \"湖北武汉\",\n" + 
-		"    \"PRODUCTID\": \"MP9990199000391\",\n" + 
-		"    \"PRODUCTNAME\": \"全球通\",\n" + 
-		"    \"PRODUCTGROUP\": \"BrandGotone\",\n" + 
-		"    \"VIPTYPE\": \"VC0000\"\n" + 
-		"}";
-
-
+	public Map<String, Object> qryuserinfo(HttpServletRequest request, HttpServletResponse response) throws HttpException, IOException {
+		Map<String,Object> resutlMap = null;
+		String reqXml = "";
+		String returnXml ="";
+		
+		String imei = request.getParameter("imei");
+		String moblie = request.getParameter("m");
+		String sid = request.getParameter("sid");
+		String version = request.getParameter("version");
+		
+		logger.info("imei:" + imei);
+		logger.info("moblie:" + moblie);
+		logger.info("sid:" + sid);
+		logger.info("version:" + version);
+		
+		String memcachedSid = String.valueOf(CacheTool.getCache("sid"));
+		if (memcachedSid != null && memcachedSid.equals(sid)){
+			//未加密的电话号码请求
+			//reqXml = this.createReqXml(moblie, flag);
+			//加密的电话号码请求
+			reqXml = this.createReqXml(moblie);
+			HttpClientHelper httpClientHelper = (HttpClientHelper)getObjPool().getObject();
+			returnXml = httpClientHelper.post(reqXml);
+			resutlMap = httpClientHelper.convertToJsonMap(returnXml, "/message/head/retinfo", "/message/Body/cli_channels_qry_QryCustomerInfoByTel/tagset");
+			getObjPool().returnObject(httpClientHelper);
+		}else{
+			resutlMap = new HashMap<String, Object>();
+			resutlMap.put("code", 500);
+			resutlMap.put("info", "Processing the request failed");
+		}
+		
+		return resutlMap;
 	}
 
-	public String createXml(String tel) {
-		return "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head><menuid/><process_code>cli_mmobile_qry_userinfo</process_code><verify_code/><req_time>20140604111607</req_time><req_seq/><unicontact/><testflag/><route><route_type>1</route_type><route_value>15002735378</route_value></route><channelinfo><operatorid/><channelid>bsacWap</channelid><unitid>bsacWap</unitid></channelinfo></head><Body><cli_mmobile_qry_userinfo><tagset><TELNUM>15002735378</TELNUM><process_code>cli_mmobile_qry_userinfo</process_code></tagset></cli_mmobile_qry_userinfo></Body></message>";
+	public String createReqXml(String tel) {
+		String reqXml = "<?xml version=\"1.0\" encoding=\"GBK\" ?>\n"
+				+ "<message><head version=\"1.0\">\n"
+				+ "<menuid/>\n"
+				+ "<process_code>cli_channels_qry_QryCustomerInfoByTel</process_code>\n"
+				+ "<verify_code/>\n"
+				+ "<req_time>20140618091245</req_time>\n"
+				+ "<req_seq>#req_seq#</req_seq>\n"
+				+ "<unicontact/>\n"
+				+ "<testflag>#testflag#</testflag>\n"
+				+ "<route><route_type>1</route_type>\n"
+				+ "<route_value>" + tel + "</route_value></route>\n"
+				+ "<channelinfo>\n"
+				+ "<operatorid>#operatorid#</operatorid>\n"
+				+ "<channelid>#channelid#</channelid>\n"
+				+ "<unitid>#unitid#</unitid>\n"
+				+ "</channelinfo>\n"
+				+ "</head>\n"
+				+ "<Body>\n"
+				+ "<cli_channels_qry_QryCustomerInfoByTel>\n"
+				+ "<tagset>\n"
+				+ "<ISCHECKPASS>false</ISCHECKPASS>\n"
+				+ "<TELNUM>" + tel + "</TELNUM>\n"
+				+ "<process_code>cli_channels_qry_QryCustomerInfoByTel</process_code>\n"
+				+ "<PASSWORD></PASSWORD>\n" + "</tagset>\n"
+				+ "</cli_channels_qry_QryCustomerInfoByTel>\n"
+				+ "</Body></message>";
+		return reqXml;
 	}
 
 	public String getDemoXml() {
-		String demoXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head version=\"1.0\"><menuid/><process_code>cli_mmobile_qry_userinfo</process_code><verify_code/><resp_time>20140604111607</resp_time><sequence><req_seq/><operation_seq/></sequence><retinfo><rettype>0</rettype><retcode>100</retcode><retmsg><![CDATA[Processing the request succeeded!]]></retmsg></retinfo></head><Body><cli_mmobile_qry_userinfo><tagset><ACCNBR>15002735378</ACCNBR><REGIONNAME>武汉</REGIONNAME><NETNAME>GSM网</NETNAME><STOPNAME>正常</STOPNAME><VIPNAME>集团成员</VIPNAME><SEXNAME>男</SEXNAME><CERTID>420102198607082093</CERTID><CREATDATE>2010-08-17</CREATDATE><REGNAME>江汉北路合作营业厅</REGNAME><SUBNAME>杨健</SUBNAME><THISPRODDATE>20140301120000</THISPRODDATE></tagset></cli_mmobile_qry_userinfo></Body></message>";
-		return demoXml;
+		return null;
+	}
+
+	@Override
+	public String createReqXml() {
+		return null;
 	}
 }

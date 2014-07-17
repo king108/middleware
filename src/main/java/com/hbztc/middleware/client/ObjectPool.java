@@ -11,7 +11,8 @@ import com.hbztc.middleware.util.HttpClientHelper;
 
 public class ObjectPool {
 	private int maxObjects = 10; // 对象池最大的大小
-	private Vector objects = null; // 存放对象池中对象的向量( PooledObject类型)
+	private Vector<PooledObject> objects = null; // 存放对象池中对象的向量( PooledObject类型)
+	private Vector<PooledObject> usedObjects = null; // 存放对象池中对象的向量( PooledObject类型)
 
 	// 读取超时  
     private final static int SOCKET_TIMEOUT = 10000;  
@@ -43,7 +44,8 @@ public class ObjectPool {
             return; // 如果己经创建，则返回     
         }     
         // 创建保存对象的向量 , 初始时有 0 个元素     
-        objects = new Vector();     
+        objects = new Vector<PooledObject>();   
+        usedObjects = new Vector<PooledObject>();   
         // 根据 numObjects 中设置的值，循环创建指定数目的对象     
         for(int i=0;i< maxObjects;i++){
         	if(objects.size() <= maxObjects){
@@ -113,6 +115,8 @@ public class ObjectPool {
 			if (!pObj.isBusy()) {
 				obj = pObj.getObject();
 				pObj.setBusy(true);
+				objects.remove(pObj);
+				usedObjects.add(pObj);
 			}
 		}
 		return obj;// 返回找到到的可用对象
@@ -128,7 +132,7 @@ public class ObjectPool {
 			return;
 		}
 		PooledObject pObj = null;
-		Enumeration enumerate = objects.elements();
+		Enumeration enumerate = usedObjects.elements();
 		// 遍历对象池中的所有对象，找到这个要返回的对象对象
 		while (enumerate.hasMoreElements()) {
 			pObj = (PooledObject) enumerate.nextElement();
@@ -136,6 +140,8 @@ public class ObjectPool {
 			if (obj == pObj.getObject()) {
 				// 找到了 , 设置此对象为空闲状态
 				pObj.setBusy(false);
+				usedObjects.remove(pObj);
+				objects.add(pObj);
 				break;
 			}
 		}
@@ -160,8 +166,20 @@ public class ObjectPool {
 			// 从对象池向量中删除它
 			objects.removeElement(pObj);
 		}
+		
+		Enumeration usedEnumerate = usedObjects.elements();
+		while (usedEnumerate.hasMoreElements()) {
+			pObj = (PooledObject) usedEnumerate.nextElement();
+			// 如果忙，等 5 秒
+			if (pObj.isBusy()) {
+				wait(5000); // 等 5 秒
+			}
+			// 从对象池向量中删除它
+			usedObjects.removeElement(pObj);
+		}
 		// 置对象池为空
 		objects = null;
+		usedObjects = null;
 	}
 
 	/**

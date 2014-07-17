@@ -598,11 +598,80 @@ public class XMLUtil{
 						}
 					}
 					rows.add(colMap);
-					data.put("list:", rows);
+					data.put("list", rows);
 				}
 				
 			} else {
 				for (Object o : nodes) {
+					Element e = (Element) o;
+					String value = e.getText();
+					String name = e.getName();
+					if (StringUtils.isNotBlank(name)) {
+						if(!data.containsKey(name)){
+							data.put(name, value);
+						}
+					}
+				}
+			}
+		} catch (Throwable e) {
+			logger.error("ex: " +e.getMessage());
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void parseXmlData(Map<String, Object> data,String xml, String path, String path2) {
+		Document document = null;
+		try {
+			document = DocumentHelper.parseText(xml);
+			
+			Node root = document.selectSingleNode(path);
+
+			Node root2 = document.selectSingleNode(path2);
+
+			if(root==null || root2 == null){
+				return;
+			}
+			
+			String rootName = root.getName();
+			List<Element> nodes = root.selectNodes("*");
+			
+			String rootName2 = root2.getName();
+			List<Element> nodes2 = root2.selectNodes("*");
+
+			List rows = new ArrayList();//row集合
+			if (rootName.equals("crset")) {
+				for (Object o : nodes) {
+					Element e_row = (Element) o;
+					Map<String,String> colMap = new LinkedHashMap<String,String>();
+					for(Iterator i_col = e_row.elementIterator();i_col.hasNext();){//遍历多个row集合元素
+						Element e_col =(Element) i_col.next();
+						String value = e_col.getText();
+						String name = e_col.getName();
+						if (StringUtils.isNotBlank(name)) {
+							if(!colMap.containsKey(name)){
+								colMap.put(name, value);
+							}
+						}
+					}
+					rows.add(colMap);
+					data.put("list", rows);
+				}
+				
+			} else {
+				for (Object o : nodes) {
+					Element e = (Element) o;
+					String value = e.getText();
+					String name = e.getName();
+					if (StringUtils.isNotBlank(name)) {
+						if(!data.containsKey(name)){
+							data.put(name, value);
+						}
+					}
+				}
+			}
+			
+			if (rootName2.equals("tagset")){
+				for (Object o : nodes2) {
 					Element e = (Element) o;
 					String value = e.getText();
 					String name = e.getName();

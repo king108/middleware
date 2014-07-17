@@ -16,9 +16,7 @@ public class DES {
     /**
      * 将byte数组转换为表示16进制值的字符串， 如：byte[]{8,18}转换为：0813， 和public static byte[]
      * hexStr2ByteArr(String strIn) 互为可逆的转换过程
-     * 
-     * @param arrB
-     *            需要转换的byte数组
+     * @param arrB 需要转换的byte数组
      * @return 转换后的字符串
      * @throws Exception
      *             本方法不处理任何异常，所有异常全部抛出
@@ -45,12 +43,9 @@ public class DES {
     /**
      * 将表示16进制值的字符串转换为byte数组， 和public static String byteArr2HexStr(byte[] arrB)
      * 互为可逆的转换过程
-     * 
-     * @param strIn
-     *            需要转换的字符串
+     * @param strIn 需要转换的字符串
      * @return 转换后的byte数组
-     * @throws Exception
-     *             本方法不处理任何异常，所有异常全部抛出
+     * @throws Exception 本方法不处理任何异常，所有异常全部抛出
      * @author <a href="mailto:leo841001@163.com">LiGuoQing</a>
      */
     public  byte[] hexStr2ByteArr(String strIn) throws Exception {
@@ -68,7 +63,6 @@ public class DES {
 
     /**
      * 默认构造方法，使用默认密钥
-     * 
      * @throws Exception
      */
     public DES() throws Exception {
@@ -77,9 +71,7 @@ public class DES {
 
     /**
      * 指定密钥构造方法
-     * 
-     * @param strKey
-     *            指定的密钥
+     * @param strKey 指定的密钥
      * @throws Exception
      */
     public DES(String strKey) throws Exception {
@@ -95,9 +87,7 @@ public class DES {
 
     /**
      * 加密字节数组
-     * 
-     * @param arrB
-     *            需加密的字节数组
+     * @param arrB 需加密的字节数组
      * @return 加密后的字节数组
      * @throws Exception
      */
@@ -107,9 +97,7 @@ public class DES {
 
     /**
      * 加密字符串
-     * 
-     * @param strIn
-     *            需加密的字符串
+     * @param strIn 需加密的字符串
      * @return 加密后的字符串
      * @throws Exception
      */
@@ -128,9 +116,7 @@ public class DES {
 
     /**
      * 解密字节数组
-     * 
-     * @param arrB
-     *            需解密的字节数组
+     * @param arrB 需解密的字节数组
      * @return 解密后的字节数组
      * @throws Exception
      */
@@ -140,9 +126,7 @@ public class DES {
 
     /**
      * 解密字符串
-     * 
-     * @param strIn
-     *            需解密的字符串
+     * @param strIn 需解密的字符串
      * @return 解密后的字符串
      * @throws Exception
      */
@@ -155,9 +139,7 @@ public class DES {
 
     /**
      * 从指定字符串生成密钥，密钥所需的字节数组长度为8位 不足8位时后面补0，超出8位只取前8位
-     * 
-     * @param arrBTmp
-     *            构成该字符串的字节数组
+     * @param arrBTmp 构成该字符串的字节数组
      * @return 生成的密钥
      * @throws java.lang.Exception
      */
@@ -177,20 +159,33 @@ public class DES {
     }
 
     /**
+     * 输出加密后的字段，用于请求URL测试
      * @param args
      */
     public static void main(String[] args) {
     
         try {
+        	//对湖北移动的杨工的手机号码和服务密码加密
+        	//String password = "15002735378123456860708";
+            //String mobile = "15002735378860708";
+        	Long date = System.currentTimeMillis();
+        	
             String password = "13407178443123456147258";
             String mobile = "13407178443123456";
+            String sid = "";
+            
+            DES des2 = new DES("356440043539939");// 自定义密钥imei
+            
             DES des = new DES("35644004");// 自定义密钥
             System.out.println("加密前的字符：" + password);
             System.out.println("加密后的字符：" + des.encrypt(password));
-            System.out.println("加密后的字符：" + des.encrypt(mobile));
+            System.out.println("加密后的字符：" + des.encrypt("15002735378123456860708"));
             System.out.println("解密后的字符：" + "45bb7c8a9a699cd7a1c1a39336ce6bf746f72e6520d3cf5d3adb375bc88de01d413fab86e8c69580cc7448be05d937a6".length());
-        } catch (Exception e) {
+            System.out.println(date);
             
+            System.out.println("手机:" + des2.decrypt("94820b6de05d6558a0107d4ee56b791aa2e7b333f125080b"));
+            System.out.println("密码:" + des2.decrypt("94820b6de05d6558a0107d4ee56b791af38266f558a401e1"));
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

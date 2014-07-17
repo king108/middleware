@@ -5,6 +5,8 @@ package com.hbztc.middleware.controller;
  * @date 2014-6-18
  */
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -16,53 +18,80 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.hbztc.middleware.client.CacheTool;
+import com.hbztc.middleware.util.HttpClientHelper;
+
 @Controller
 @RequestMapping("/gprsFlux")
-public class GprsfluxController{
-	private static Logger logger = LoggerFactory
-			.getLogger(GprsfluxController.class);
+public class GprsfluxController extends AbstractController{
+	private static Logger logger = LoggerFactory.getLogger(GprsfluxController.class);
 
 	@RequestMapping("qryGprsFlux")
 	@ResponseBody
-	public String qrygprsflux(HttpServletRequest request,
-			HttpServletResponse response) throws HttpException, IOException {
-		return 
-		"{\n" +
-		"    \"code\": \"200\",\n" + 
-		"    \"info\": \"success\",\n" + 
-		"    \"packtype\":\"3\",\n" + 
-		" \"list\": [\n" + 
-		"        {\n" + 
-		"            \"Col1\": \"30\",\n" + 
-		"            \"Col2\": \"0\",\n" + 
-		"            \"Col3\": \"30\"\n" + 
-		"        },\n" + 
-		"        {\n" + 
-		"            \"Col1\": \"10\",\n" + 
-		"            \"Col2\": \"0\",\n" + 
-		"            \"Col3\": \"10\"\n" + 
-		"        },\n" + 
-		"        {\n" + 
-		"            \"Col1\": \"30\",\n" + 
-		"            \"Col2\": \"0\",\n" + 
-		"            \"Col3\": \"30\"\n" + 
-		"        }\n" + 
-		"    ]\n" + 
-		"\n" + 
-		"}";
-
+	public Map<String, Object> qrygprsflux(HttpServletRequest request, HttpServletResponse response) throws HttpException, IOException {
+		Map<String,Object> resutlMap = null;
+		String reqXml = "";
+		String returnXml ="";
+		
+		String imei = request.getParameter("imei");
+		String moblie = request.getParameter("m");
+		String sid = request.getParameter("sid");
+		String version = request.getParameter("version");
+		
+		logger.info("imei:" + imei);
+		//输出解密前的电话号码
+		logger.info("moblie:" + moblie);
+		logger.info("sid:" + sid);
+		logger.info("version:" + version);
+		
+		String memcachedSid = String.valueOf(CacheTool.getCache("sid"));
+		if (memcachedSid != null && memcachedSid.equals(sid)){
+			//未加密的电话号码请求
+			//reqXml = this.createReqXml(moblie);
+			//加密的电话号码请求
+			reqXml = this.createReqXml(moblie);
+			HttpClientHelper httpClientHelper = (HttpClientHelper)getObjPool().getObject();
+			returnXml = httpClientHelper.post(reqXml);
+			resutlMap = httpClientHelper.convertToJsonMap(returnXml, "/message/head/retinfo", "/message/Body/cli_net_gprsflux_used_2014/crset", "/message/Body/cli_net_gprsflux_used_2014/tagset");
+			getObjPool().returnObject(httpClientHelper);
+		}else{
+			resutlMap = new HashMap<String, Object>();
+			resutlMap.put("code", 500);
+			resutlMap.put("info", "Processing the request failed");
+		}
+		
+		return resutlMap;
 	}
 
-	private String createXml(String tel) {
-		String demoXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head><menuid></menuid><process_code>cli_mmobile_qry_gprsflux</process_code><verify_code></verify_code><req_time>20131130111826</req_time><req_seq></req_seq><unicontact></unicontact><testflag></testflag><route><route_type>1</route_type><route_value>13476228880</route_value></route><channelinfo><operatorid></operatorid><channelid>bsacWap</channelid><unitid>bsacWap</unitid></channelinfo></head><Body><cli_mmobile_qry_gprsflux>"
-				+ "<tagset><TELNUM>"+tel+"</TELNUM><process_code>cli_mmobile_qry_gprsflux</process_code></tagset></cli_mmobile_qry_gprsflux></Body></message>";
-		return null;
+	private String createReqXml(String tel) {
+		String reqXml = "<?xml version=\"1.0\" encoding=\"GBK\" ?><message>\n"
+				+ "<head version=\"1.0\">\n" + "<menuid>#menuid#</menuid>\n"
+				+ "<process_code>cli_net_gprsflux_used_2014</process_code>\n"
+				+ "<verify_code>#verify_code#</verify_code>\n"
+				+ "<req_time>20140618091700</req_time>\n"
+				+ "<req_seq>#req_seq#</req_seq>\n"
+				+ "<unicontact>#unicontact#</unicontact>\n"
+				+ "<testflag>#testflag#</testflag>\n"
+				+ "<route><route_type>1</route_type>\n"
+				+ "<route_value>" + tel + "</route_value></route>\n"
+				+ "<channelinfo>\n" + "<operatorid>#operatorid#</operatorid>\n"
+				+ "<channelid>#channelid#</channelid>\n"
+				+ "<unitid>#unitid#</unitid>\n" + "</channelinfo>\n"
+				+ "</head>\n" + "<Body><cli_net_gprsflux_used_2014>\n"
+				+ "<tagset>" + "<TELNUM>" + tel + "</TELNUM>"
+				+ "<GROUPID></GROUPID>\n"
+				+ "<process_code>cli_net_gprsflux_used_2014</process_code>"
+				+ "</tagset>\n" + "</cli_net_gprsflux_used_2014>\n"
+				+ "</Body></message>";
+		return reqXml;
 	}
 
 	public String getDemoXml() {
-		
-		String demoXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head version=\"1.0\"><menuid/><process_code>cli_mmobile_qry_gprsflux</process_code><verify_code/><resp_time>20140604111345</resp_time><sequence><req_seq/><operation_seq/></sequence><retinfo><rettype>0</rettype><retcode>0</retcode><retmsg><!["
-                          +"CDATA[ Processingtherequestsucceeded! ]]></retmsg></retinfo></head><Body><cli_mmobile_qry_gprsflux><crset><row><Col1>0</Col1><Col2>0</Col2><Col3>0</Col3></row></crset></cli_mmobile_qry_gprsflux></Body></message>";
-		return demoXml;
+		return null;
+	}
+
+	@Override
+	public String createReqXml() {
+		return null;
 	}
 }

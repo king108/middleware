@@ -6,6 +6,8 @@ package com.hbztc.middleware.controller;
  * @date 2014-6-18
  */
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -17,52 +19,95 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.hbztc.middleware.client.CacheTool;
+import com.hbztc.middleware.util.HttpClientHelper;
+
 @Controller
 @RequestMapping("/blance")
-public class BlanceController {
-	private static Logger logger = LoggerFactory
-			.getLogger(BlanceController.class);
-
-	/**
-	 * 获取flag 
-	 * 0：BOSS返回金额，BOSS不发送短信 
-	 * 1：BOSS返回金额，且BOSS直接发送短信
-	 * 2：BOSS返回短信内容，BOSS不发生短信
-	 * @param request
-	 * @return
-	 */
-	private String getFlag(HttpServletRequest request) {
-
-		return request.getParameter("flag");
-	}
+public class BlanceController extends AbstractController{
+	private static Logger logger = LoggerFactory.getLogger(BlanceController.class);
 
 	@RequestMapping("feeBlance")
 	@ResponseBody
-	public String feeblance(HttpServletRequest request,
-			HttpServletResponse response) throws HttpException, IOException {
+	public Map<String, Object> feeblance(HttpServletRequest request, HttpServletResponse response) throws HttpException, IOException {
+		Map<String,Object> resutlMap = null;
+		String reqXml = "";
+		String returnXml ="";
 		
-		return 
-				"{\n" +
-				"\"code\": \"200\",\n" + 
-				"\"info\": \"success\",\n" + 
-				"\"left\": \"2390\",\n" + 
-				"\"overdraft\": \"10000\",\n" + 
-				"\"balance\": \"1223\",\n" + 
-				"\"totalowe\": \"0\",\n" + 
-				"\"spacefee\": \"200\",\n" + 
-				"\"nowfee\": \"0\"\n" + 
-				"}";
+		String imei = request.getParameter("imei");
+		String moblie = request.getParameter("m");
+		String sid = request.getParameter("sid");
+		String flag = request.getParameter("flag");
+		String version = request.getParameter("version");
+		
+		String memcachedSid = String.valueOf(CacheTool.getCache("sid"));
+		if (memcachedSid != null && memcachedSid.equals(sid)){
+			logger.info("imei:" + imei);
+			logger.info("moblie:" + moblie);
+			logger.info("sid:" + sid);
+			logger.info("flag:" + flag);
+			logger.info("version:" + version);
+			
+			//未加密的电话号码请求
+			//reqXml = this.createReqXml(moblie, flag);
+			//加密的电话号码请求
+			reqXml = this.createReqXml(moblie, flag);
+			HttpClientHelper httpClientHelper = (HttpClientHelper)getObjPool().getObject();
+			returnXml = httpClientHelper.post(reqXml);
+			resutlMap = httpClientHelper.convertToJsonMap(returnXml, "/message/head/retinfo", "/message/Body/cli_mmobile_qry_feeblance/tagset");
+			getObjPool().returnObject(httpClientHelper);
+		}else{
+			resutlMap = new HashMap<String, Object>();
+			resutlMap.put("code", 500);
+			resutlMap.put("info", "Processing the request failed");
+		}
+		return resutlMap;
 	}
-
-	public String createXml(String tel, String flag) {
+	
+	// 客户端请求参数，组装为xml
+	public String createReqXml(String tel, String flag) {
 		Long date = System.currentTimeMillis();
-		String reqxml = "<?xml version=\"1.0\" encoding=\"GBK\"?><message><head version=\"1.0\"><menuid>#menuid#</menuid><process_code>cli_mmobile_qry_feeblance</process_code><verify_code>#verify_code#</verify_code><req_time>20140618091008</req_time><req_seq>#req_seq#</req_seq><unicontact>#unicontact#</unicontact><testflag>#testflag#</testflag><route><route_type>1</route_type><route_value>13871668140</route_value></route><channelinfo><operatorid>#operatorid#</operatorid><channelid>#channelid#</channelid><unitid>#unitid#</unitid></channelinfo></head><Body><cli_mmobile_qry_feeblance><tagset><TELNUM>13871668140</TELNUM><FLAG>0</FLAG><process_code>cli_mmobile_qry_feeblance</process_code></tagset></cli_mmobile_qry_feeblance></Body></message>";
-		return reqxml;
+		String reqXml = 
+			"<?xml version=\"1.0\" encoding=\"GBK\" ?>\n"
+			+"<message>\n"
+			+"	<head version=\"1.0\">\n"
+			+"		<menuid>#menuid#</menuid>\n"
+			+"		<process_code>cli_mmobile_qry_feeblance</process_code>\n"
+			+"		<verify_code>#verify_code#</verify_code>\n"
+			+"		<req_time>" + date + "</req_time>\n"
+			+"		<req_seq>#req_seq#</req_seq>\n"
+			+"		<unicontact>#unicontact#</unicontact>\n"
+			+"		<testflag>#testflag#</testflag>\n"
+			+"		<route>\n"
+			+"			<route_type>1</route_type>\n"
+			+"			<route_value>" + tel + "</route_value>\n"
+			+"		</route>\n"
+			+"		<channelinfo>\n"
+			+"			<operatorid>#operatorid#</operatorid>\n"
+			+"			<channelid>#channelid#</channelid>\n"
+			+"			<unitid>#unitid#</unitid>\n"
+			+"		</channelinfo>\n"
+			+"	</head>\n"
+			+"	<Body>\n"
+			+"		<cli_mmobile_qry_feeblance>\n"
+			+"			<tagset>\n"
+			+"				<TELNUM>" + tel + "</TELNUM>\n"
+			+"				<FLAG>" + flag + "</FLAG>\n"
+			+"				<process_code>cli_mmobile_qry_feeblance</process_code>\n"
+			+"			</tagset>\n"
+			+"		</cli_mmobile_qry_feeblance>\n"
+			+"	</Body>\n"
+			+"</message>\n";
+			logger.info(reqXml);
+		return reqXml;
 	}
 
 	public String getDemoXml() {
-		// 余额xml响应
-		String demoXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><message><head version=\"1.0\"><menuid/><process_code>cli_mmobile_qry_feeblance</process_code><verify_code/><resp_time>20140604111016</resp_time><sequence><req_seq/><operation_seq/></sequence><retinfo><rettype>0</rettype><retcode>100</retcode><retmsg><![CDATA[Processingtherequestsucceeded!]]></retmsg></retinfo></head><Body><cli_mmobile_qry_feeblance><tagset><RETFLAG>0</RETFLAG><LEFT>21876</LEFT><OVERDRAFT>10000</OVERDRAFT><BALANCE>11876</BALANCE><TOTALOWE>0</TOTALOWE><SPACEFEE>200</SPACEFEE><NOWFEE>0</NOWFEE></tagset></cli_mmobile_qry_feeblance></Body></message>";
-		return demoXml;
+		return null;
+	}
+
+	@Override
+	public String createReqXml() {
+		return null;
 	}
 }

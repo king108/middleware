@@ -29,6 +29,17 @@ public class DesHelper {
 		return decCode;
 	}
 	
+	public static String decryptSid(String sid, String key){
+		String decCode = "";
+		try {
+			DES des = new DES(key);
+			decCode = des.decrypt(sid);
+		} catch (Exception e) {
+			logger.error(e.getMessage());
+		}
+		return decCode;
+	}
+	
 	public static String convertImei(String srcCode) {
 		srcCode = srcCode +"00000000";
 		return srcCode.substring(0,8);
